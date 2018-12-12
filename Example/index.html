@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        
+        
+        <link rel="shortcut icon" href="../img/favicon.ico">
+
+	<title>Example - tutorials</title>
+
+        <link href="../css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="../css/font-awesome-4.0.3.css" rel="stylesheet">
+        <link rel="stylesheet" href="../css/highlight.css">
+        <link href="../css/base.css" rel="stylesheet">
+
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+        <![endif]-->
+
+        
+    </head>
+
+    <body>
+
+        <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+    <div class="container">
+
+        <!-- Collapsed navigation -->
+        <div class="navbar-header">
+            <!-- Expander button -->
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+
+            <!-- Main title -->
+            <a class="navbar-brand" href="..">tutorials</a>
+        </div>
+
+        <!-- Expanded navigation -->
+        <div class="navbar-collapse collapse">
+            <!-- Main navigation -->
+            <ul class="nav navbar-nav">
+            
+            
+                <li >
+                    <a href="..">Home</a>
+                </li>
+            
+            
+            
+                <li class="active">
+                    <a href="./">Example</a>
+                </li>
+            
+            
+            
+                <li >
+                    <a href="../use/">Useful resources</a>
+                </li>
+            
+            
+            
+                <li >
+                    <a href="../About/">About</a>
+                </li>
+            
+            
+            </ul>
+
+            <!-- Search, Navigation and Repo links -->
+            <ul class="nav navbar-nav navbar-right">
+                <li>
+                    <a href="#" data-toggle="modal" data-target="#mkdocs_search_modal">
+                        <i class="fa fa-search"></i> Search
+                    </a>
+                </li>
+                <li >
+                    <a rel="next" href="..">
+                        <i class="fa fa-arrow-left"></i> Previous
+                    </a>
+                </li>
+                <li >
+                    <a rel="prev" href="../use/">
+                        Next <i class="fa fa-arrow-right"></i>
+                    </a>
+                </li>
+                
+            </ul>
+        </div>
+    </div>
+</div>
+
+        <div class="container">
+            <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+    
+        <li class="main active"><a href="#project-name-one-shot-contact-prediction-in-casp14">Project Name: One-shot contact prediction in CASP14</a></li>
+        
+            <li><a href="#setup">Setup</a></li>
+        
+            <li><a href="#available-data">Available data</a></li>
+        
+            <li><a href="#the-code">The code</a></li>
+        
+            <li><a href="#notes">Notes</a></li>
+        
+            <li><a href="#download">Download</a></li>
+        
+    
+    </ul>
+</div></div>
+            <div class="col-md-9" role="main">
+
+<h1 id="project-name-one-shot-contact-prediction-in-casp14">Project Name: One-shot contact prediction in CASP14</h1>
+<h2 id="setup">Setup</h2>
+<p>We are here right before CASP14, unfortunately for some reason (see <a href="https://en.wikipedia.org/wiki/Godzilla">more</a>) we only have one training sample, but we still need to train 
+a model to participate in CASP14, what should we do?</p>
+<h2 id="available-data">Available data</h2>
+<ul>
+<li>Training data: T918-D3</li>
+<li>Validation data: T0859-D1</li>
+</ul>
+<p>We assume that we already have the features stored in <em>.2d.npy</em> format file and distance saved in <em>.contact</em>  format file.</p>
+<h2 id="the-code">The code</h2>
+<p>Let's begin!!!!!!!!....... by import something.</p>
+<pre><code># -*- coding: utf-8 -*-
+&quot;&quot;&quot;
+@author: Yang Li
+&quot;&quot;&quot;
+import torch.nn as nn
+import torch.nn.functional as F
+import math
+import torch
+import numpy as np
+from torch.autograd import Variable
+import torch.optim as opt
+</code></pre>
+
+<p>then we build some basic blocks and a ResNet:</p>
+<pre><code>def conv3x3(in_planes, out_planes):
+    &quot;&quot;&quot;3x3 convolution with padding&quot;&quot;&quot;
+    return nn.Conv2d(in_planes, out_planes, kernel_size=3,
+                     padding=1, bias=False)
+class BasicBlock(nn.Module):
+    expansion = 1
+    def __init__(self, planes):
+        super(BasicBlock, self).__init__()
+        self.conv1 = conv3x3(planes, planes)
+        self.bn1 = nn.InstanceNorm2d(planes)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = conv3x3(planes, planes)
+        self.bn2 = nn.InstanceNorm2d(planes)
+    def forward(self, x):
+        residual = x
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out += residual
+        out = self.relu(out)
+        return out
+class ResNet(nn.Module):
+    def __init__(self, feature_size,hidden_size=64):
+        super(ResNet, self).__init__()
+        self.conv1 = nn.Conv2d(feature_size, hidden_size, kernel_size=1, bias=False)# transit layer
+        self.bn1 = nn.InstanceNorm2d(hidden_size) 
+        self.relu = nn.ReLU(inplace=True)
+        self.resblock1=BasicBlock(hidden_size)#first block
+        self.resblock2=BasicBlock(hidden_size)#second block
+        self.conv2 = nn.Conv2d(hidden_size, 1, kernel_size=1)
+        self.sig=nn.Sigmoid()# final activition function : sigmoid
+    def forward(self, x):
+        x=self.conv1(x)
+        x=self.bn1(x)
+        x=self.relu(x)
+        x=self.resblock1(x)
+        x=self.resblock2(x)
+        x=self.conv2(x)
+        x=self.sig(x)
+        return x
+</code></pre>
+
+<p>Now we have built a resnet with 2 residual blocks. Time for training and testing:</p>
+<pre><code>train_x=np.load('T0918-D3.2d.npy')
+print(train_x.shape)
+train_y=np.genfromtxt('T0918-D3.contact')
+test_x=np.load('T0859-D1.2d.npy')
+test_y=np.genfromtxt('T0859-D1.contact')
+print(test_x.shape)
+</code></pre>
+
+<p>run the code, we can have:</p>
+<pre><code>(445, 118, 118)
+(445, 113, 113)
+</code></pre>
+
+<p>First dimension is feature number, we have 445 features, protein length for T0918-D3 is 118 and 113 for T0859-D1. how 
+about the contact map?</p>
+<pre><code>import matplotlib.pyplot as plt
+def plotmatrix(x):
+    try:
+        plt.imshow(x,cmap='Greys');
+        plt.colorbar()
+        plt.show()
+    except:
+        print('Unable to plot!')
+train_y[train_y&lt;8.0]=1
+train_y[train_y&gt;=8.0]=0
+test_y[test_y&lt;8.0]=1
+test_y[test_y&gt;=8.0]=0
+plotmatrix(train_y)
+plotmatrix(test_y)
+train_x,train_y=Variable(torch.FloatTensor(np.array([train_x]))),Variable(torch.FloatTensor(train_y))
+test_x,test_y=Variable(torch.FloatTensor(np.array([test_x])),volatile=True),Variable(torch.FloatTensor(test_y),volatile=True)
+</code></pre>
+
+<p>Run it.<br>
+<img alt="train_y" src="../imgs/trainy.png" />
+<img alt="test_y" src="../imgs/testy.png" />
+<br></p>
+<p>Maybe we should find a function to guide the model training, usually people use cross entropy loss function.<br>
+ Pytorch has mant built-in loss function, but I prefer writing my own loss function:</p>
+<pre><code>def loss_function(output,target,epsilon=1e-8,):
+    losses=  -(target* torch.log(output + epsilon)  + 
+              (1. - target) * torch.log( 1. - output +epsilon)                        )
+    loss= torch.mean(losses)
+    return loss 
+</code></pre>
+
+<p>What is the loss function if we do not training?</p>
+<pre><code>model=ResNet(445,64)
+model.eval()
+pred0=model(test_x)
+loss=loss_function(pred0,test_y)
+print('Random loss:',loss.data[0])
+</code></pre>
+
+<p>Run it:</p>
+<pre><code>Random loss: tensor(0.7249)
+</code></pre>
+
+<p>That means, without any training, the prediction loss of init model is 0.7249. Then we do some training:</p>
+<pre><code>optimizer=opt.Adam(model.parameters())
+model.train()
+for i in range(100):
+    optimizer.zero_grad()
+    y_pred=model(train_x)
+    aloss=loss_function(y_pred,train_y)
+    aloss.backward()
+    optimizer.step()
+    if i&gt;0 and i%10==0:
+        print(i,'th training loss:',aloss.data[0])
+        model.eval()
+        predi=model(test_x)
+        loss=loss_function(predi,test_y)
+        print(i,'th validation loss:',loss.data[0])  
+        model.train()
+</code></pre>
+
+<p>Run the code, the output is:</p>
+<pre><code>10 th training loss: tensor(0.2864)
+10 th validation loss: tensor(0.3629)
+20 th training loss: tensor(0.2072)
+20 th validation loss: tensor(0.3088)
+30 th training loss: tensor(0.1598)
+30 th validation loss: tensor(0.2765)
+40 th training loss: tensor(0.1254)
+40 th validation loss: tensor(0.2571)
+50 th training loss: tensor(0.0996)
+50 th validation loss: tensor(0.2500)
+60 th training loss: tensor(0.0785)
+60 th validation loss: tensor(0.2407)
+70 th training loss: tensor(0.0584)
+70 th validation loss: tensor(0.2341)
+80 th training loss: tensor(0.0407)
+80 th validation loss: tensor(0.2287)
+90 th training loss: tensor(0.0287)
+90 th validation loss: tensor(0.2225)
+</code></pre>
+
+<p>Both training loss and validation loss are decreasing, That's good! 
+But the training loss is very close to 0, which is over-fitting, perhaps, very dangerous!
+The Best way to avoid over-fitting is collecting more data.</p>
+<h2 id="notes">Notes</h2>
+<ol>
+<li>In pytorch 0.3.1, we need to use Variable(Tensor) to make a Tensor <em>Autogradable</em>, But in later versions, we donot need that.</li>
+<li>Variable(Tensor,<em>volatile</em>=True) is used for test, since we do not need gradients, Just inference.</li>
+<li>Be careful with model.eval() and model.train() which controls whether some layers are trainable. use model.eval() when you do tests. use model.train() when you are training.</li>
+<li>optimizer.zero_grad() is required before each batch.</li>
+</ol>
+<h2 id="download">Download</h2>
+<p>All the data in the example can be downloaded <a href="../down/example.zip">here</a>.</p></div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            
+            <center>Documentation built with <a href="http://www.mkdocs.org/">MkDocs</a>.</center>
+        </footer>
+
+        <script src="../js/jquery-1.10.2.min.js"></script>
+        <script src="../js/bootstrap-3.0.3.min.js"></script>
+        <script src="../js/highlight.pack.js"></script>
+        <script>var base_url = '..';</script>
+        <script data-main="../mkdocs/js/search.js" src="../mkdocs/js/require.js"></script>
+        <script src="../js/base.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="Search Modal" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                        <h4 class="modal-title" id="exampleModalLabel">Search</h4>
+                    </div>
+                    <div class="modal-body">
+                        <p>
+                            From here you can search these documents. Enter
+                            your search terms below.
+                        </p>
+                        <form role="form">
+                            <div class="form-group">
+                                <input type="text" class="form-control" placeholder="Search..." id="mkdocs-search-query">
+                            </div>
+                        </form>
+                        <div id="mkdocs-search-results"></div>
+                    </div>
+                    <div class="modal-footer">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

@@ -1,0 +1,114 @@
+{
+    "docs": [
+        {
+            "location": "/",
+            "text": "Welcome to PyTorch\n\n\nFor full documentation of pytorch, visit \npytorch.org\n.\n\n\nWhat is pytorch?\n\n\nPyTorch is an optimized tensor library for deep learning using GPUs and CPUs.\n\n\nInstallation\n\n\nBefore installation\n\n\nI suggest that we should install our own python environment in our cluster. \nAnaconda\n is recommanded. \nAfter installing the anaconda environment, you can add the installation PATH to your bash start-up system.\n\n\nInstallation\n\n\nFirst, we need to install pytorch by \n\n\nconda install pytorch torchvision -c pytorch\n\n\n\n\nsee \ninstall PyTorch locally\n for details.\n\n\nHowever, we can not install latested version of PyTorch on our cluster or comet since our glibc version is OLD.\nThe highest version that we can install is 0.3.1 on our cluster or comet, by \n\n\nconda install pytorch=0.3.1 -c pytorch\n\n\n\n\nor \n\n\nconda install pytorch=0.3.1 cuda80 -c pytorch\n\n\n\n\nif you also want to install cuda.\n\n\nVerification\n\n\nFrom the command line, type:\n\n\npython\n\n\n\n\nthen enter the following code:\n\n\nfrom __future__ import print_function\nimport torch\nx = torch.rand(5, 3)\nprint(x)\n\n\n\n\nThe output should be something similar to:\n\n\ntensor([[0.3380, 0.3845, 0.3217],\n        [0.8337, 0.9050, 0.2650],\n        [0.2979, 0.7141, 0.9069],\n        [0.1449, 0.1132, 0.1375],\n        [0.4675, 0.3947, 0.1426]])\n\n\n\n\nAdditionally, to check if your GPU driver and CUDA is enabled and accessible by PyTorch, run the following commands to return whether or not the CUDA driver is enabled:\n\n\nimport torch\ntorch.cuda.is_available()",
+            "title": "Home"
+        },
+        {
+            "location": "/#welcome-to-pytorch",
+            "text": "For full documentation of pytorch, visit  pytorch.org .",
+            "title": "Welcome to PyTorch"
+        },
+        {
+            "location": "/#what-is-pytorch",
+            "text": "PyTorch is an optimized tensor library for deep learning using GPUs and CPUs.",
+            "title": "What is pytorch?"
+        },
+        {
+            "location": "/#installation",
+            "text": "",
+            "title": "Installation"
+        },
+        {
+            "location": "/#before-installation",
+            "text": "I suggest that we should install our own python environment in our cluster.  Anaconda  is recommanded.  After installing the anaconda environment, you can add the installation PATH to your bash start-up system.",
+            "title": "Before installation"
+        },
+        {
+            "location": "/#installation_1",
+            "text": "First, we need to install pytorch by   conda install pytorch torchvision -c pytorch  see  install PyTorch locally  for details.  However, we can not install latested version of PyTorch on our cluster or comet since our glibc version is OLD.\nThe highest version that we can install is 0.3.1 on our cluster or comet, by   conda install pytorch=0.3.1 -c pytorch  or   conda install pytorch=0.3.1 cuda80 -c pytorch  if you also want to install cuda.",
+            "title": "Installation"
+        },
+        {
+            "location": "/#verification",
+            "text": "From the command line, type:  python  then enter the following code:  from __future__ import print_function\nimport torch\nx = torch.rand(5, 3)\nprint(x)  The output should be something similar to:  tensor([[0.3380, 0.3845, 0.3217],\n        [0.8337, 0.9050, 0.2650],\n        [0.2979, 0.7141, 0.9069],\n        [0.1449, 0.1132, 0.1375],\n        [0.4675, 0.3947, 0.1426]])  Additionally, to check if your GPU driver and CUDA is enabled and accessible by PyTorch, run the following commands to return whether or not the CUDA driver is enabled:  import torch\ntorch.cuda.is_available()",
+            "title": "Verification"
+        },
+        {
+            "location": "/Example/",
+            "text": "Project Name: One-shot contact prediction in CASP14\n\n\nSetup\n\n\nWe are here right before CASP14, unfortunately for some reason (see \nmore\n) we only have one training sample, but we still need to train \na model to participate in CASP14, what should we do?\n\n\nAvailable data\n\n\n\n\nTraining data: T918-D3\n\n\nValidation data: T0859-D1\n\n\n\n\nWe assume that we already have the features stored in \n.2d.npy\n format file and distance saved in \n.contact\n  format file.\n\n\nThe code\n\n\nLet's begin!!!!!!!!....... by import something.\n\n\n# -*- coding: utf-8 -*-\n\"\"\"\n@author: Yang Li\n\"\"\"\nimport torch.nn as nn\nimport torch.nn.functional as F\nimport math\nimport torch\nimport numpy as np\nfrom torch.autograd import Variable\nimport torch.optim as opt\n\n\n\n\nthen we build some basic blocks and a ResNet:\n\n\ndef conv3x3(in_planes, out_planes):\n    \"\"\"3x3 convolution with padding\"\"\"\n    return nn.Conv2d(in_planes, out_planes, kernel_size=3,\n                     padding=1, bias=False)\nclass BasicBlock(nn.Module):\n    expansion = 1\n    def __init__(self, planes):\n        super(BasicBlock, self).__init__()\n        self.conv1 = conv3x3(planes, planes)\n        self.bn1 = nn.InstanceNorm2d(planes)\n        self.relu = nn.ReLU(inplace=True)\n        self.conv2 = conv3x3(planes, planes)\n        self.bn2 = nn.InstanceNorm2d(planes)\n    def forward(self, x):\n        residual = x\n        out = self.conv1(x)\n        out = self.bn1(out)\n        out = self.relu(out)\n        out = self.conv2(out)\n        out = self.bn2(out)\n        out += residual\n        out = self.relu(out)\n        return out\nclass ResNet(nn.Module):\n    def __init__(self, feature_size,hidden_size=64):\n        super(ResNet, self).__init__()\n        self.conv1 = nn.Conv2d(feature_size, hidden_size, kernel_size=1, bias=False)# transit layer\n        self.bn1 = nn.InstanceNorm2d(hidden_size) \n        self.relu = nn.ReLU(inplace=True)\n        self.resblock1=BasicBlock(hidden_size)#first block\n        self.resblock2=BasicBlock(hidden_size)#second block\n        self.conv2 = nn.Conv2d(hidden_size, 1, kernel_size=1)\n        self.sig=nn.Sigmoid()# final activition function : sigmoid\n    def forward(self, x):\n        x=self.conv1(x)\n        x=self.bn1(x)\n        x=self.relu(x)\n        x=self.resblock1(x)\n        x=self.resblock2(x)\n        x=self.conv2(x)\n        x=self.sig(x)\n        return x\n\n\n\n\nNow we have built a resnet with 2 residual blocks. Time for training and testing:\n\n\ntrain_x=np.load('T0918-D3.2d.npy')\nprint(train_x.shape)\ntrain_y=np.genfromtxt('T0918-D3.contact')\ntest_x=np.load('T0859-D1.2d.npy')\ntest_y=np.genfromtxt('T0859-D1.contact')\nprint(test_x.shape)\n\n\n\n\nrun the code, we can have:\n\n\n(445, 118, 118)\n(445, 113, 113)\n\n\n\n\nFirst dimension is feature number, we have 445 features, protein length for T0918-D3 is 118 and 113 for T0859-D1. how \nabout the contact map?\n\n\nimport matplotlib.pyplot as plt\ndef plotmatrix(x):\n    try:\n        plt.imshow(x,cmap='Greys');\n        plt.colorbar()\n        plt.show()\n    except:\n        print('Unable to plot!')\ntrain_y[train_y<8.0]=1\ntrain_y[train_y>=8.0]=0\ntest_y[test_y<8.0]=1\ntest_y[test_y>=8.0]=0\nplotmatrix(train_y)\nplotmatrix(test_y)\ntrain_x,train_y=Variable(torch.FloatTensor(np.array([train_x]))),Variable(torch.FloatTensor(train_y))\ntest_x,test_y=Variable(torch.FloatTensor(np.array([test_x])),volatile=True),Variable(torch.FloatTensor(test_y),volatile=True)\n\n\n\n\nRun it.\n\n\n\n\n\n\n\n\nMaybe we should find a function to guide the model training, usually people use cross entropy loss function.\n\n Pytorch has mant built-in loss function, but I prefer writing my own loss function:\n\n\ndef loss_function(output,target,epsilon=1e-8,):\n    losses=  -(target* torch.log(output + epsilon)  + \n              (1. - target) * torch.log( 1. - output +epsilon)                        )\n    loss= torch.mean(losses)\n    return loss \n\n\n\n\nWhat is the loss function if we do not training?\n\n\nmodel=ResNet(445,64)\nmodel.eval()\npred0=model(test_x)\nloss=loss_function(pred0,test_y)\nprint('Random loss:',loss.data[0])\n\n\n\n\nRun it:\n\n\nRandom loss: tensor(0.7249)\n\n\n\n\nThat means, without any training, the prediction loss of init model is 0.7249. Then we do some training:\n\n\noptimizer=opt.Adam(model.parameters())\nmodel.train()\nfor i in range(100):\n    optimizer.zero_grad()\n    y_pred=model(train_x)\n    aloss=loss_function(y_pred,train_y)\n    aloss.backward()\n    optimizer.step()\n    if i>0 and i%10==0:\n        print(i,'th training loss:',aloss.data[0])\n        model.eval()\n        predi=model(test_x)\n        loss=loss_function(predi,test_y)\n        print(i,'th validation loss:',loss.data[0])  \n        model.train()\n\n\n\n\nRun the code, the output is:\n\n\n10 th training loss: tensor(0.2864)\n10 th validation loss: tensor(0.3629)\n20 th training loss: tensor(0.2072)\n20 th validation loss: tensor(0.3088)\n30 th training loss: tensor(0.1598)\n30 th validation loss: tensor(0.2765)\n40 th training loss: tensor(0.1254)\n40 th validation loss: tensor(0.2571)\n50 th training loss: tensor(0.0996)\n50 th validation loss: tensor(0.2500)\n60 th training loss: tensor(0.0785)\n60 th validation loss: tensor(0.2407)\n70 th training loss: tensor(0.0584)\n70 th validation loss: tensor(0.2341)\n80 th training loss: tensor(0.0407)\n80 th validation loss: tensor(0.2287)\n90 th training loss: tensor(0.0287)\n90 th validation loss: tensor(0.2225)\n\n\n\n\nBoth training loss and validation loss are decreasing, That's good! \nBut the training loss is very close to 0, which is over-fitting, perhaps, very dangerous!\nThe Best way to avoid over-fitting is collecting more data.\n\n\nNotes\n\n\n\n\nIn pytorch 0.3.1, we need to use Variable(Tensor) to make a Tensor \nAutogradable\n, But in later versions, we donot need that.\n\n\nVariable(Tensor,\nvolatile\n=True) is used for test, since we do not need gradients, Just inference.\n\n\nBe careful with model.eval() and model.train() which controls whether some layers are trainable. use model.eval() when you do tests. use model.train() when you are training.\n\n\noptimizer.zero_grad() is required before each batch.\n\n\n\n\nDownload\n\n\nAll the data in the example can be downloaded \nhere\n.",
+            "title": "Example"
+        },
+        {
+            "location": "/Example/#project-name-one-shot-contact-prediction-in-casp14",
+            "text": "",
+            "title": "Project Name: One-shot contact prediction in CASP14"
+        },
+        {
+            "location": "/Example/#setup",
+            "text": "We are here right before CASP14, unfortunately for some reason (see  more ) we only have one training sample, but we still need to train \na model to participate in CASP14, what should we do?",
+            "title": "Setup"
+        },
+        {
+            "location": "/Example/#available-data",
+            "text": "Training data: T918-D3  Validation data: T0859-D1   We assume that we already have the features stored in  .2d.npy  format file and distance saved in  .contact   format file.",
+            "title": "Available data"
+        },
+        {
+            "location": "/Example/#the-code",
+            "text": "Let's begin!!!!!!!!....... by import something.  # -*- coding: utf-8 -*-\n\"\"\"\n@author: Yang Li\n\"\"\"\nimport torch.nn as nn\nimport torch.nn.functional as F\nimport math\nimport torch\nimport numpy as np\nfrom torch.autograd import Variable\nimport torch.optim as opt  then we build some basic blocks and a ResNet:  def conv3x3(in_planes, out_planes):\n    \"\"\"3x3 convolution with padding\"\"\"\n    return nn.Conv2d(in_planes, out_planes, kernel_size=3,\n                     padding=1, bias=False)\nclass BasicBlock(nn.Module):\n    expansion = 1\n    def __init__(self, planes):\n        super(BasicBlock, self).__init__()\n        self.conv1 = conv3x3(planes, planes)\n        self.bn1 = nn.InstanceNorm2d(planes)\n        self.relu = nn.ReLU(inplace=True)\n        self.conv2 = conv3x3(planes, planes)\n        self.bn2 = nn.InstanceNorm2d(planes)\n    def forward(self, x):\n        residual = x\n        out = self.conv1(x)\n        out = self.bn1(out)\n        out = self.relu(out)\n        out = self.conv2(out)\n        out = self.bn2(out)\n        out += residual\n        out = self.relu(out)\n        return out\nclass ResNet(nn.Module):\n    def __init__(self, feature_size,hidden_size=64):\n        super(ResNet, self).__init__()\n        self.conv1 = nn.Conv2d(feature_size, hidden_size, kernel_size=1, bias=False)# transit layer\n        self.bn1 = nn.InstanceNorm2d(hidden_size) \n        self.relu = nn.ReLU(inplace=True)\n        self.resblock1=BasicBlock(hidden_size)#first block\n        self.resblock2=BasicBlock(hidden_size)#second block\n        self.conv2 = nn.Conv2d(hidden_size, 1, kernel_size=1)\n        self.sig=nn.Sigmoid()# final activition function : sigmoid\n    def forward(self, x):\n        x=self.conv1(x)\n        x=self.bn1(x)\n        x=self.relu(x)\n        x=self.resblock1(x)\n        x=self.resblock2(x)\n        x=self.conv2(x)\n        x=self.sig(x)\n        return x  Now we have built a resnet with 2 residual blocks. Time for training and testing:  train_x=np.load('T0918-D3.2d.npy')\nprint(train_x.shape)\ntrain_y=np.genfromtxt('T0918-D3.contact')\ntest_x=np.load('T0859-D1.2d.npy')\ntest_y=np.genfromtxt('T0859-D1.contact')\nprint(test_x.shape)  run the code, we can have:  (445, 118, 118)\n(445, 113, 113)  First dimension is feature number, we have 445 features, protein length for T0918-D3 is 118 and 113 for T0859-D1. how \nabout the contact map?  import matplotlib.pyplot as plt\ndef plotmatrix(x):\n    try:\n        plt.imshow(x,cmap='Greys');\n        plt.colorbar()\n        plt.show()\n    except:\n        print('Unable to plot!')\ntrain_y[train_y<8.0]=1\ntrain_y[train_y>=8.0]=0\ntest_y[test_y<8.0]=1\ntest_y[test_y>=8.0]=0\nplotmatrix(train_y)\nplotmatrix(test_y)\ntrain_x,train_y=Variable(torch.FloatTensor(np.array([train_x]))),Variable(torch.FloatTensor(train_y))\ntest_x,test_y=Variable(torch.FloatTensor(np.array([test_x])),volatile=True),Variable(torch.FloatTensor(test_y),volatile=True)  Run it.     Maybe we should find a function to guide the model training, usually people use cross entropy loss function. \n Pytorch has mant built-in loss function, but I prefer writing my own loss function:  def loss_function(output,target,epsilon=1e-8,):\n    losses=  -(target* torch.log(output + epsilon)  + \n              (1. - target) * torch.log( 1. - output +epsilon)                        )\n    loss= torch.mean(losses)\n    return loss   What is the loss function if we do not training?  model=ResNet(445,64)\nmodel.eval()\npred0=model(test_x)\nloss=loss_function(pred0,test_y)\nprint('Random loss:',loss.data[0])  Run it:  Random loss: tensor(0.7249)  That means, without any training, the prediction loss of init model is 0.7249. Then we do some training:  optimizer=opt.Adam(model.parameters())\nmodel.train()\nfor i in range(100):\n    optimizer.zero_grad()\n    y_pred=model(train_x)\n    aloss=loss_function(y_pred,train_y)\n    aloss.backward()\n    optimizer.step()\n    if i>0 and i%10==0:\n        print(i,'th training loss:',aloss.data[0])\n        model.eval()\n        predi=model(test_x)\n        loss=loss_function(predi,test_y)\n        print(i,'th validation loss:',loss.data[0])  \n        model.train()  Run the code, the output is:  10 th training loss: tensor(0.2864)\n10 th validation loss: tensor(0.3629)\n20 th training loss: tensor(0.2072)\n20 th validation loss: tensor(0.3088)\n30 th training loss: tensor(0.1598)\n30 th validation loss: tensor(0.2765)\n40 th training loss: tensor(0.1254)\n40 th validation loss: tensor(0.2571)\n50 th training loss: tensor(0.0996)\n50 th validation loss: tensor(0.2500)\n60 th training loss: tensor(0.0785)\n60 th validation loss: tensor(0.2407)\n70 th training loss: tensor(0.0584)\n70 th validation loss: tensor(0.2341)\n80 th training loss: tensor(0.0407)\n80 th validation loss: tensor(0.2287)\n90 th training loss: tensor(0.0287)\n90 th validation loss: tensor(0.2225)  Both training loss and validation loss are decreasing, That's good! \nBut the training loss is very close to 0, which is over-fitting, perhaps, very dangerous!\nThe Best way to avoid over-fitting is collecting more data.",
+            "title": "The code"
+        },
+        {
+            "location": "/Example/#notes",
+            "text": "In pytorch 0.3.1, we need to use Variable(Tensor) to make a Tensor  Autogradable , But in later versions, we donot need that.  Variable(Tensor, volatile =True) is used for test, since we do not need gradients, Just inference.  Be careful with model.eval() and model.train() which controls whether some layers are trainable. use model.eval() when you do tests. use model.train() when you are training.  optimizer.zero_grad() is required before each batch.",
+            "title": "Notes"
+        },
+        {
+            "location": "/Example/#download",
+            "text": "All the data in the example can be downloaded  here .",
+            "title": "Download"
+        },
+        {
+            "location": "/use/",
+            "text": "Some useful resources\n\n\nLearning deep learning\n\n\nMy learning trace:\n\n1. \ndeeplearning.ai\n\n2. \nAdvanced Topics in Deep Learning (Hung-yi Lee)(Best)\n\n3. \nMXNet/Gluon \u52a8\u624b\u5b66\u6df1\u5ea6\u5b66\u4e60(by Amazon AI)\n\n\nTorchProteinLibrary\n\n\nThis library pytorch layers for working with protein structures in a differentiable way. We are working on this project and it's bound to change: there will be interface changes to the current layers, addition of the new ones and code optimizations.\n\nMore details visit \nPyTorch library of layers acting on protein representations\n\n\nAwesome PyTorch\n\n\nPaper Implementations, Tutorials & Examples, Useful PyTorch Tools and Blog & Articles\n\nMore details visit \nAwesome PyTorch\n\n\nLoad optimizers trained on GPUs\n\n\nPytorch has many bugs, especially in earlier versions. 0.3.1 can not load optimizers on GPUs. We can use following function to load:\n\n\ndef move_optimizer_to_cuda(optimizer):\n    \"\"\"\n    Move the optimizer state to GPU, if necessary.\n    After calling, any parameter specific state in the optimizer\n    will be located on the same device as the parameter.\n    \"\"\"\n    for param_group in optimizer.param_groups:\n        for param in param_group['params']:\n            if param.is_cuda:\n                param_state = optimizer.state[param]\n                for k in param_state.keys():\n                    if torch.is_tensor(param_state[k]):\n                        param_state[k] = param_state[k].cuda(\n                                        device=param.get_device())\n\n\n\n\nMore to come...",
+            "title": "Useful resources"
+        },
+        {
+            "location": "/use/#some-useful-resources",
+            "text": "",
+            "title": "Some useful resources"
+        },
+        {
+            "location": "/use/#learning-deep-learning",
+            "text": "My learning trace: \n1.  deeplearning.ai \n2.  Advanced Topics in Deep Learning (Hung-yi Lee)(Best) \n3.  MXNet/Gluon \u52a8\u624b\u5b66\u6df1\u5ea6\u5b66\u4e60(by Amazon AI)",
+            "title": "Learning deep learning"
+        },
+        {
+            "location": "/use/#torchproteinlibrary",
+            "text": "This library pytorch layers for working with protein structures in a differentiable way. We are working on this project and it's bound to change: there will be interface changes to the current layers, addition of the new ones and code optimizations. \nMore details visit  PyTorch library of layers acting on protein representations",
+            "title": "TorchProteinLibrary"
+        },
+        {
+            "location": "/use/#awesome-pytorch",
+            "text": "Paper Implementations, Tutorials & Examples, Useful PyTorch Tools and Blog & Articles \nMore details visit  Awesome PyTorch",
+            "title": "Awesome PyTorch"
+        },
+        {
+            "location": "/use/#load-optimizers-trained-on-gpus",
+            "text": "Pytorch has many bugs, especially in earlier versions. 0.3.1 can not load optimizers on GPUs. We can use following function to load:  def move_optimizer_to_cuda(optimizer):\n    \"\"\"\n    Move the optimizer state to GPU, if necessary.\n    After calling, any parameter specific state in the optimizer\n    will be located on the same device as the parameter.\n    \"\"\"\n    for param_group in optimizer.param_groups:\n        for param in param_group['params']:\n            if param.is_cuda:\n                param_state = optimizer.state[param]\n                for k in param_state.keys():\n                    if torch.is_tensor(param_state[k]):\n                        param_state[k] = param_state[k].cuda(\n                                        device=param.get_device())  More to come...",
+            "title": "Load optimizers trained on GPUs"
+        },
+        {
+            "location": "/About/",
+            "text": "About this document\n\n\nThis document is written by \nYang Li\n and for Zhanglab members only.",
+            "title": "About"
+        },
+        {
+            "location": "/About/#about-this-document",
+            "text": "This document is written by  Yang Li  and for Zhanglab members only.",
+            "title": "About this document"
+        }
+    ]
+}
